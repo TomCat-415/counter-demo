@@ -1,0 +1,90 @@
+{
+  "accounts": [
+    {
+      "discriminator": [
+        255,
+        176,
+        4,
+        245,
+        188,
+        253,
+        124,
+        25
+      ],
+      "name": "Counter"
+    }
+  ],
+  "address": "2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1",
+  "instructions": [
+    {
+      "accounts": [
+        {
+          "name": "counter",
+          "writable": true
+        }
+      ],
+      "args": [],
+      "discriminator": [
+        11,
+        18,
+        104,
+        9,
+        104,
+        174,
+        59,
+        33
+      ],
+      "name": "increment"
+    },
+    {
+      "accounts": [
+        {
+          "name": "counter",
+          "signer": true,
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "signer": true,
+          "writable": true
+        },
+        {
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
+        }
+      ],
+      "args": [],
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "name": "initialize"
+    }
+  ],
+  "metadata": {
+    "description": "Created with Anchor",
+    "name": "counter",
+    "spec": "0.1.0",
+    "version": "0.1.0"
+  },
+  "types": [
+    {
+      "name": "Counter",
+      "type": {
+        "fields": [
+          {
+            "name": "value",
+            "type": "u64"
+          }
+        ],
+        "kind": "struct"
+      }
+    }
+  ]
+}

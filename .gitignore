@@ -1,0 +1,31 @@
+# Node
+node_modules/
+.yarn/*
+# (optional) keep lockfile if you prefer reproducible installs
+# yarn.lock
+
+# Rust / Anchor
+target/*
+!target/idl/
+!target/idl/counter.json
+target/deploy/
+.anchor/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+
+# 🔒 Secrets (do NOT commit keypairs)
+devnet.json
+*.key
+*.pem
+*.der
+*.p12
+*.enc
+
+# Local validator ledger
+test-ledger/
+
+# Local validator ledger
+test-ledger/
