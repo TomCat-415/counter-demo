@@ -10,7 +10,6 @@ import {
   SystemProgram,
   Transaction,
   TransactionInstruction,
-  sendAndConfirmTransaction,
 } from '@solana/web3.js';
 
 const PROGRAM_ID = new PublicKey('2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1');
@@ -22,19 +21,12 @@ const ACC_DISC = Buffer.from([255, 176, 4, 245, 188, 253, 124, 25]);
 
 export default function Counter() {
   const { connection } = useConnection();
-  const { publicKey, sendTransaction, connected, wallets, wallet } = useWallet();
+  const { publicKey, sendTransaction, connected, wallets } = useWallet();
   const [counter, setCounter] = useState<Keypair | null>(null);
   const [counterValue, setCounterValue] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<string>('');
-  const [walletReady, setWalletReady] = useState(false);
   const [isClient, setIsClient] = useState(false);
-
-  // Check if wallet is ready
-  useEffect(() => {
-    // Always show wallet button, let the wallet adapter handle detection
-    setWalletReady(true);
-  }, []);
 
   useEffect(() => {
     // Ensure certain UI only renders on the client to avoid hydration mismatch
@@ -54,7 +46,8 @@ export default function Counter() {
       const info = await connection.getAccountInfo(counterPubkey, 'confirmed');
       if (!info) return null;
       
-      const data = new Uint8Array(info.data as any);
+      const raw = info.data as unknown;
+      const data = raw instanceof Uint8Array ? raw : new Uint8Array(raw as ArrayBufferLike);
       const header = data.subarray(0, 8);
       const discriminatorMatches =
         header.length === ACC_DISC.length &&
@@ -66,8 +59,9 @@ export default function Counter() {
       const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
       const value = view.getBigUint64(8, true);
       return Number(value);
-    } catch (err) {
-      console.error('Error reading counter:', err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('Error reading counter:', message);
       return null;
     }
   }, [connection]);
@@ -108,9 +102,10 @@ export default function Counter() {
       setCounterValue(0);
       setStatus('Counter initialized! 🎉');
       
-    } catch (err: any) {
-      console.error('Initialize error:', err);
-      setStatus(`Error: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('Initialize error:', message);
+      setStatus(`Error: ${message}`);
     } finally {
       setIsLoading(false);
     }
@@ -145,13 +140,33 @@ export default function Counter() {
       
       setStatus('Counter incremented! ✨');
       
-    } catch (err: any) {
-      console.error('Increment error:', err);
-      setStatus(`Error: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('Increment error:', message);
+      setStatus(`Error: ${message}`);
     } finally {
       setIsLoading(false);
     }
   }, [publicKey, connected, counter, connection, sendTransaction, readCounterValue]);
+
+  const airdropOneSol = useCallback(async () => {
+    if (!publicKey || !connected) return;
+
+    setIsLoading(true);
+    setStatus('Requesting 1 SOL airdrop on Devnet...');
+
+    try {
+      const signature = await connection.requestAirdrop(publicKey, 1_000_000_000);
+      await connection.confirmTransaction(signature, 'confirmed');
+      setStatus('Airdrop complete! ✅');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('Airdrop error:', message);
+      setStatus(`Error: ${message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [publicKey, connected, connection]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-8">
@@ -201,6 +216,16 @@ export default function Counter() {
             </div>
           )}
           
+          {connected && (
+            <button
+              onClick={airdropOneSol}
+              disabled={isLoading}
+              className="w-full bg-gray-700 hover:bg-gray-600 disabled:bg-gray-600 text-white font-bold py-3 px-6 uppercase tracking-wider transition-colors duration-200 disabled:cursor-not-allowed"
+            >
+              Airdrop 1 SOL (Devnet)
+            </button>
+          )}
+
           {connected && !counter && (
             <button
               onClick={initializeCounter}
