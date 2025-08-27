@@ -24,6 +24,12 @@ A tiny Anchor program (Counter) deployed to **devnet** plus a Node script that:
     increment tx: <signature>
     After increment: 1
 
+## Demo Output
+
+Here’s what it looks like when you run the demo:
+
+![demo output](assets/demo-output.png)
+
 ## Notes
 - Do **not** commit keypairs (see `.gitignore`). Your devnet key lives at `~/code/solana/devnet.json`.
 - Built with Anchor 0.31.1 and Node 20.
