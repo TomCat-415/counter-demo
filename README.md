@@ -7,6 +7,8 @@ A tiny Anchor program (Counter) deployed to **devnet** plus a Node script that:
 
 ## Program
 - Program ID (devnet): `2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1`
+- View on Solana Explorer:
+  https://explorer.solana.com/address/2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1?cluster=devnet
 - IDL: `target/idl/counter.json`
 
 ## Run the demo script (devnet)
