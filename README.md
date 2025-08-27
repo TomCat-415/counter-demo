@@ -1,6 +1,11 @@
 # Solana Counter (Anchor program + Next.js dApp)
 
-Live demo (Devnet): https://counter-m0yaw2elc-thomas-clinards-projects.vercel.app
+![Next.js](https://img.shields.io/badge/Next.js-15-black)
+![Solana](https://img.shields.io/badge/Solana-Devnet-5BCE80)
+![Anchor](https://img.shields.io/badge/Anchor-0.31.1-purple)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
+Live demo (Devnet): https://counter-web-seven.vercel.app/
 
 Note: Use Phantom on Solana Devnet (enable test networks) to interact.
 
@@ -84,3 +89,12 @@ Expected output includes tx signatures and values (0 after init, 1 after increme
 ## Notes
 - Do **not** commit keypairs (see `.gitignore`). Your Devnet key lives at `~/code/solana/devnet.json`.
 - Built with Anchor 0.31.1, Next.js 15, React 19.
+
+## For developers
+- Cluster: Devnet
+- RPC endpoint: https://api.devnet.solana.com (via `clusterApiUrl(WalletAdapterNetwork.Devnet)`)
+- Config location: `counter-web/src/app/components/WalletProvider.tsx`
+- Faucet: `connection.requestAirdrop(publicKey, 1_000_000_000)` in `counter-web/src/app/components/Counter.tsx`
+
+## License
+MIT © 2025 Thomas Clinard. See [`LICENSE`](./LICENSE).
