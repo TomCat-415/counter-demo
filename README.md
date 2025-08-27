@@ -1,5 +1,9 @@
 # Solana Counter (Anchor program + Next.js dApp)
 
+Live demo (Devnet): https://counter-m0yaw2elc-thomas-clinards-projects.vercel.app
+
+Note: Use Phantom on Solana Devnet (enable test networks) to interact.
+
 This repo contains:
 - An Anchor program that stores a `u64` counter (deployed to Solana Devnet)
 - A Next.js web dApp that connects Phantom, creates a counter account, and increments it
@@ -7,6 +11,7 @@ This repo contains:
 Program (Devnet)
 - Program ID: `2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1`
 - Explorer: https://explorer.solana.com/address/2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1?cluster=devnet
+  (For verification and debugging; lets you view program/account state and txs.)
 - IDL: `target/idl/counter.json`
 
 ## Prerequisites
