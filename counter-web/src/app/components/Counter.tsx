@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton, WalletModalButton, WalletConnectButton } from '@solana/wallet-adapter-react-ui';
+import { WalletMultiButton, WalletModalButton, WalletConnectButton, useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import {
   PublicKey,
@@ -22,6 +22,7 @@ const ACC_DISC = Buffer.from([255, 176, 4, 245, 188, 253, 124, 25]);
 export default function Counter() {
   const { connection } = useConnection();
   const { publicKey, sendTransaction, connected, wallets } = useWallet();
+  const { setVisible } = useWalletModal();
   const [counter, setCounter] = useState<Keypair | null>(null);
   const [counterValue, setCounterValue] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -259,6 +260,12 @@ export default function Counter() {
           <div className="text-center text-xs text-gray-500 space-y-1">
             <p>Connected: {publicKey?.toString().slice(0, 8)}...{publicKey?.toString().slice(-8)}</p>
             <p>Network: Devnet</p>
+            <button
+              onClick={() => setVisible(true)}
+              className="pt-2 mx-auto text-gray-400 hover:text-teal-300 underline"
+            >
+              Wallet
+            </button>
           </div>
         )}
       </div>
