@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton, WalletModalButton } from '@solana/wallet-adapter-react-ui';
+import { WalletMultiButton, WalletModalButton, WalletConnectButton } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import {
   PublicKey,
@@ -176,7 +176,7 @@ export default function Counter() {
           <h1 className="text-4xl font-bold uppercase tracking-wider mb-2">
             SOLANA COUNTER
           </h1>
-          <p className="text-gray-400">Your first blockchain app</p>
+          <p className="text-gray-400">Live on Devnet</p>
         </div>
 
         {/* Counter Display */}
@@ -196,15 +196,13 @@ export default function Counter() {
 
         {/* Wallet Connection */}
         <div className="space-y-4">
-          <div className="wallet-adapter-button-trigger" suppressHydrationWarning>
+          <div className="wallet-adapter-button-trigger flex justify-center" suppressHydrationWarning>
             {isClient ? (
-              hasReadyWallet ? (
-                <WalletMultiButton className="!bg-teal-500 hover:!bg-teal-600 !rounded-none !border-none !font-bold !uppercase !tracking-wider !h-12 !w-full" />
-              ) : (
-                <WalletModalButton className="!bg-teal-500 hover:!bg-teal-600 !rounded-none !border-none !font-bold !uppercase !tracking-wider !h-12 !w-full" />
-              )
+              !connected ? (
+                <WalletConnectButton className="!bg-teal-500 hover:!bg-teal-600 !rounded-none !border-none !font-bold !uppercase !tracking-wider !h-12 !px-8" />
+              ) : null
             ) : (
-              <button className="w-full bg-teal-500 text-white font-bold py-3 px-6 uppercase tracking-wider opacity-60" disabled>
+              <button className="bg-teal-500 text-white font-bold py-3 px-8 uppercase tracking-wider opacity-60" disabled>
                 Loading Wallet...
               </button>
             )}
@@ -220,7 +218,7 @@ export default function Counter() {
             <button
               onClick={airdropOneSol}
               disabled={isLoading}
-              className="w-full bg-gray-700 hover:bg-gray-600 disabled:bg-gray-600 text-white font-bold py-3 px-6 uppercase tracking-wider transition-colors duration-200 disabled:cursor-not-allowed"
+              className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white font-bold py-3 px-6 uppercase tracking-wider transition-colors duration-200 disabled:cursor-not-allowed"
             >
               Airdrop 1 SOL (Devnet)
             </button>
