@@ -142,5 +142,5 @@ grep -n "partialSign(newCounter)" counter-web/src/app/components/Counter.tsx
 grep -n "signTransaction(" counter-web/src/app/components/Counter.tsx || echo "OK: not present"
 ```
 
-*End of reference**
+*End of reference*
 
