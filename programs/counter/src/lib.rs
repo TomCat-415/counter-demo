@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1"); // replace later with 'anchor keys list' value
+declare_id!("2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1");
 
 #[program]
 pub mod counter {
