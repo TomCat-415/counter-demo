@@ -21,7 +21,7 @@ Demonstrates wallet connection, account creation, and updating persistent state 
 
 ---
 
-## 🛠Tech Stack
+## Tech Stack
 - **Smart contract**: Rust, Anchor 0.31.1
 - **Frontend**: Next.js 15, React 19
 - **Wallet**: Phantom (Devnet, test networks enabled)
@@ -30,8 +30,17 @@ Demonstrates wallet connection, account creation, and updating persistent state 
 ---
 
 ## Screenshots
+
 <div align="center">
-  <img src="./assets/demo-output.png" alt="CLI demo output" width="500"/>
+  <a href="./screenshots/connect.png">
+    <img src="./screenshots/connect.png" alt="Connect wallet screen" width="220" />
+  </a>
+  <a href="./screenshots/create.png">
+    <img src="./screenshots/create.png" alt="Create counter screen" width="220" />
+  </a>
+  <a href="./screenshots/increment.png">
+    <img src="./screenshots/increment.png" alt="Increment counter screen" width="220" />
+  </a>
 </div>
 
 ---
