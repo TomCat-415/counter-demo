@@ -5,96 +5,50 @@
 ![Anchor](https://img.shields.io/badge/Anchor-0.31.1-purple)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-Live demo (Devnet): https://counter-web-seven.vercel.app/
+Simple on-chain counter built with **Rust (Anchor)** + **Next.js dApp**.  
+Demonstrates wallet connection, account creation, and updating persistent state on Solana Devnet.  
 
-Note: Use Phantom on Solana Devnet (enable test networks) to interact.
+🔗 **Live demo**: [counter-web-seven.vercel.app](https://counter-web-seven.vercel.app/)  
+(Use Phantom on Devnet with test networks enabled.)
 
-This repo contains:
-- An Anchor program that stores a `u64` counter (deployed to Solana Devnet)
-- A Next.js web dApp that connects Phantom, creates a counter account, and increments it
+---
 
-Program (Devnet)
-- Program ID: `2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1`
-- Explorer: https://explorer.solana.com/address/2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1?cluster=devnet
-  (For verification and debugging; lets you view program/account state and txs.)
-- IDL: `target/idl/counter.json`
+## 🚀 What’s Included
+- **Anchor program**: stores a `u64` counter on Solana Devnet
+- **Next.js client**: connects Phantom, creates counter account, increments state
+- **Program ID**: `2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1`  
+  [View on Explorer](https://explorer.solana.com/address/2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1?cluster=devnet)
 
-## Prerequisites
-- Node 20+
-- Solana CLI (`solana --version`)
-- Phantom wallet (enable Test networks and switch to Solana Devnet)
+---
 
-Optional (for Anchor local building):
-- Anchor CLI 0.31.x
+## 🛠️ Tech Stack
+- **Smart contract**: Rust, Anchor 0.31.1
+- **Frontend**: Next.js 15, React 19
+- **Wallet**: Phantom (Devnet, test networks enabled)
+- **Deployment**: Vercel (frontend) + Solana Devnet (program)
 
-## Quick start (web dApp)
-1) Point CLI to Devnet and (optionally) fund your wallet for testing:
+---
 
-```
-solana config set --url https://api.devnet.solana.com
-# Airdrop to your Phantom public key if needed
-# solana airdrop 1 YOUR_PHANTOM_PUBLIC_KEY --url https://api.devnet.solana.com
-```
+## 📷 Screenshots
+<div align="center">
+  <img src="./assets/demo-output.png" alt="CLI demo output" width="500"/>
+</div>
 
-2) Run the app locally:
+---
 
-```
-cd counter-web
-npm install
-npm run dev
-# open http://localhost:3000
-```
+## 📂 Structure
+- `counter/` → Anchor program + IDL
+- `counter-web/` → Next.js dApp
+- `scripts/` → Optional Node.js scripts for CLI demo (init, increment, read)
 
-3) In the app:
-- Open Phantom → Settings → Developer Settings → enable “Show test networks” → switch to Solana Devnet
-- Click “Select Wallet” and approve
-- (Optional) Click “Airdrop 1 SOL (Devnet)”
-- Click “Create Counter” then “Increment Counter”
+---
 
-## Deploy (Vercel)
+## 🔍 Notes for Reviewers
+- No keypairs committed (`.gitignore` enforced).
+- Built and deployed successfully on **Devnet**.
+- Can extend into more complex stateful dApps (multi-user counters, token integrations, etc.).
 
-From the web app directory:
+---
 
-```
-cd counter-web
-npx vercel@latest deploy --prod
-```
-
-Share the Production URL shown by the CLI (…vercel.app). If a login prompt appears for viewers, in Vercel go to:
-- Project → Settings → Deployment Protection → Authentication → set to “Preview Deployments only” or “Disabled”
-
-Note: You generally do not need to disable “Build Logs and Source Protection”. Keep it enabled unless you have a specific reason.
-
-## CLI demo scripts (optional)
-
-Run end‑to‑end without the web dApp:
-
-```
-nvm use 20
-yarn install
-node scripts/init_counter.js   # creates and initializes a counter
-node scripts/demo.js           # init + increment + readback
-```
-
-Expected output includes tx signatures and values (0 after init, 1 after increment). See `assets/demo-output.png`.
-
-## Troubleshooting
-- “Simulation reverted” warning in Phantom: ensure network is Devnet and use the latest build. The client pre‑signs the created account.
-- Hydration errors: all wallet UI is client‑only; hard refresh if you see a stale build.
-
-## About the two READMEs
-- This file (`counter/README.md`) covers the whole project: Anchor program, scripts, and the web dApp including deploy steps.
-- `counter/counter-web/README.md` is the default Next.js template readme and can be ignored for this project.
-
-## Notes
-- Do **not** commit keypairs (see `.gitignore`). Your Devnet key lives at `~/code/solana/devnet.json`.
-- Built with Anchor 0.31.1, Next.js 15, React 19.
-
-## For developers
-- Cluster: Devnet
-- RPC endpoint: https://api.devnet.solana.com (via `clusterApiUrl(WalletAdapterNetwork.Devnet)`)
-- Config location: `counter-web/src/app/components/WalletProvider.tsx`
-- Faucet: `connection.requestAirdrop(publicKey, 1_000_000_000)` in `counter-web/src/app/components/Counter.tsx`
-
-## License
-MIT © 2025 Thomas Clinard. See [`LICENSE`](./LICENSE).
+## 📜 License
+MIT © 2025 Thomas Clinard
