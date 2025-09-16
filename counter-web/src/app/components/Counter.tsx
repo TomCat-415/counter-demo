@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useRateLimitedConnection } from '../hooks/useRateLimitedConnection';
 import { WalletMultiButton, WalletModalButton, WalletConnectButton, useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { WalletReadyState } from '@solana/wallet-adapter-base';
 import {
   PublicKey,
-  Keypair,
   SystemProgram,
   Transaction,
   TransactionInstruction,
+  ComputeBudgetProgram,
 } from '@solana/web3.js';
 
 const PROGRAM_ID = new PublicKey('2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1');
@@ -20,10 +21,10 @@ const DISC_INCR = Buffer.from([11, 18, 104, 9, 104, 174, 59, 33]);
 const ACC_DISC = Buffer.from([255, 176, 4, 245, 188, 253, 124, 25]);
 
 export default function Counter() {
-  const { connection } = useConnection();
-  const { publicKey, sendTransaction, connected, wallets } = useWallet();
+  const { connection, getLatestBlockhash, confirmTransaction, getAccountInfo, requestAirdrop } = useRateLimitedConnection();
+  const { publicKey, sendTransaction: walletSendTransaction, signTransaction, connected, wallets } = useWallet();
   const { setVisible } = useWalletModal();
-  const [counter, setCounter] = useState<Keypair | null>(null);
+  const [counter, setCounter] = useState<PublicKey | null>(null);
   const [counterValue, setCounterValue] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<string>('');
@@ -44,7 +45,7 @@ export default function Counter() {
 
   const readCounterValue = useCallback(async (counterPubkey: PublicKey) => {
     try {
-      const info = await connection.getAccountInfo(counterPubkey, 'confirmed');
+      const info = await getAccountInfo(counterPubkey, 'confirmed');
       if (!info) return null;
       
       const raw = info.data as unknown;
@@ -65,7 +66,7 @@ export default function Counter() {
       console.error('Error reading counter:', message);
       return null;
     }
-  }, [connection]);
+  }, [getAccountInfo]);
 
   const initializeCounter = useCallback(async () => {
     if (!publicKey || !connected) return;
@@ -74,43 +75,86 @@ export default function Counter() {
     setStatus('Creating new counter...');
     
     try {
-      const newCounter = Keypair.generate();
-      
+      // Ensure sufficient balance for rent + fees
+      const rentLamports = await connection.getMinimumBalanceForRentExemption(8 + 8, 'confirmed');
+      const balance = await connection.getBalance(publicKey, 'confirmed');
+      if (balance < rentLamports + 5_000) {
+        setStatus('Insufficient funds for rent. Use Airdrop 1 SOL and retry.');
+        return;
+      }
+
+      // Derive PDA for the counter
+      const [counterPda] = PublicKey.findProgramAddressSync([Buffer.from('counter')], PROGRAM_ID);
+
+      // If already initialized, just load it
+      const existing = await getAccountInfo(counterPda, 'confirmed');
+      if (existing) {
+        setCounter(counterPda);
+        const val = await readCounterValue(counterPda);
+        if (val !== null) setCounterValue(val);
+        setStatus('Counter already exists; loaded current value.');
+        return;
+      }
+
       const ixInit = new TransactionInstruction({
         programId: PROGRAM_ID,
         keys: [
-          { pubkey: newCounter.publicKey, isSigner: true, isWritable: true },
+          { pubkey: counterPda, isSigner: false, isWritable: true },
           { pubkey: publicKey, isSigner: true, isWritable: true },
           { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
         ],
         data: DISC_INIT,
       });
 
-      const tx = new Transaction().add(ixInit);
+      const tx = new Transaction().add(
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1 }),
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 1_000_000 }),
+        ixInit,
+      );
       tx.feePayer = publicKey;
 
-      // Fetch a recent blockhash before partially signing
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+      // Fetch a recent blockhash before sending
+      const { blockhash, lastValidBlockHeight } = await getLatestBlockhash('finalized');
       tx.recentBlockhash = blockhash;
 
-      // The counter account must sign because it is created as a signer in the instruction
-      tx.partialSign(newCounter);
+      // Let the wallet sign and surface errors; we'll simulate on failure below
 
-      const signature = await sendTransaction(tx, connection);
-      await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+      try {
+        let signature: string;
+        if (signTransaction) {
+          const signed = await signTransaction(tx);
+          const raw = signed.serialize();
+          console.log('Initialize raw tx bytes:', raw.length);
+          signature = await connection.sendRawTransaction(raw, { preflightCommitment: 'confirmed' });
+        } else {
+          signature = await walletSendTransaction(tx, connection, { preflightCommitment: 'confirmed' });
+        }
+        await confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+      } catch (e: any) {
+        console.error('WalletSendTransactionError message:', e?.message);
+        console.error('cause:', e?.cause || e?.originalError);
+        if (e?.logs) console.error('logs:', e.logs);
+        try {
+          const sim = await connection.simulateTransaction(tx, { sigVerify: false, replaceRecentBlockhash: true });
+          console.error('Sim logs:', sim.value.logs);
+          console.error('Sim err:', sim.value.err);
+        } catch {}
+        throw e;
+      }
       
-      setCounter(newCounter);
+      setCounter(counterPda);
       setCounterValue(0);
       setStatus('Counter initialized! 🎉');
       
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('Initialize error:', message);
+      console.error('Initialize error object:', err);
       setStatus(`Error: ${message}`);
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey, connected, connection, sendTransaction]);
+  }, [publicKey, connected, connection, walletSendTransaction, getLatestBlockhash, confirmTransaction]);
 
   const incrementCounter = useCallback(async () => {
     if (!publicKey || !connected || !counter) return;
@@ -122,19 +166,48 @@ export default function Counter() {
       const ixIncr = new TransactionInstruction({
         programId: PROGRAM_ID,
         keys: [
-          { pubkey: counter.publicKey, isSigner: false, isWritable: true }
+          { pubkey: counter, isSigner: false, isWritable: true }
         ],
         data: DISC_INCR,
       });
 
-      const tx = new Transaction().add(ixIncr);
+      const tx = new Transaction().add(
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1 }),
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 1_000_000 }),
+        ixIncr,
+      );
       tx.feePayer = publicKey;
       
-      const signature = await sendTransaction(tx, connection);
-      await connection.confirmTransaction(signature, 'confirmed');
+      const { blockhash, lastValidBlockHeight } = await getLatestBlockhash('finalized');
+      tx.recentBlockhash = blockhash;
+
+      // Let the wallet sign and surface errors; we'll simulate on failure below
+
+      try {
+        let signature: string;
+        if (signTransaction) {
+          const signed = await signTransaction(tx);
+          const raw = signed.serialize();
+          console.log('Increment raw tx bytes:', raw.length);
+          signature = await connection.sendRawTransaction(raw, { preflightCommitment: 'confirmed' });
+        } else {
+          signature = await walletSendTransaction(tx, connection, { preflightCommitment: 'confirmed' });
+        }
+        await confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+      } catch (e: any) {
+        console.error('WalletSendTransactionError message:', e?.message);
+        console.error('cause:', e?.cause || e?.originalError);
+        if (e?.logs) console.error('logs:', e.logs);
+        try {
+          const sim = await connection.simulateTransaction(tx, { sigVerify: false, replaceRecentBlockhash: true });
+          console.error('Sim logs:', sim.value.logs);
+          console.error('Sim err:', sim.value.err);
+        } catch {}
+        throw e;
+      }
       
       // Read the new value
-      const newValue = await readCounterValue(counter.publicKey);
+      const newValue = await readCounterValue(counter);
       if (newValue !== null) {
         setCounterValue(newValue);
       }
@@ -148,7 +221,7 @@ export default function Counter() {
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey, connected, counter, connection, sendTransaction, readCounterValue]);
+  }, [publicKey, connected, counter, connection, walletSendTransaction, getLatestBlockhash, confirmTransaction, readCounterValue]);
 
   const airdropOneSol = useCallback(async () => {
     if (!publicKey || !connected) return;
@@ -157,17 +230,18 @@ export default function Counter() {
     setStatus('Requesting 1 SOL airdrop on Devnet...');
 
     try {
-      const signature = await connection.requestAirdrop(publicKey, 1_000_000_000);
-      await connection.confirmTransaction(signature, 'confirmed');
+      const signature = await requestAirdrop(publicKey, 1_000_000_000);
+      await confirmTransaction(signature, 'confirmed');
       setStatus('Airdrop complete! ✅');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('Airdrop error:', message);
+      console.error('Airdrop error object:', err);
       setStatus(`Error: ${message}`);
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey, connected, connection]);
+  }, [publicKey, connected, requestAirdrop, confirmTransaction]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-8">
@@ -190,7 +264,7 @@ export default function Counter() {
           </div>
           {counter && (
             <div className="text-xs text-gray-500 break-all">
-              Counter: {counter.publicKey.toString()}
+              Counter: {counter.toString()}
             </div>
           )}
         </div>

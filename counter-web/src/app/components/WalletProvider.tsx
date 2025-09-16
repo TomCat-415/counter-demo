@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
-import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
-import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { clusterApiUrl } from '@solana/web3.js';
+import { Connection } from '@solana/web3.js';
+import { DEVNET_ENDPOINTS, RpcEndpointManager } from '../utils/rpcEndpoints';
 
 // Import wallet adapter CSS
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -15,16 +14,29 @@ export default function AppWalletProvider({
 }: {
   children: React.ReactNode;
 }) {
-  // Use devnet for our counter program
-  const network = WalletAdapterNetwork.Devnet;
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  const [endpointManager] = useState(() => new RpcEndpointManager(DEVNET_ENDPOINTS));
+  const [endpoint, setEndpoint] = useState(() => endpointManager.getCurrentEndpoint().url);
+
+  // Test endpoint health and switch if needed
+  useEffect(() => {
+    const testEndpointHealth = async () => {
+      try {
+        const connection = new Connection(endpoint, 'confirmed');
+        await connection.getVersion(); // Simple health check
+      } catch (error: any) {
+        // Treat any network/CORS/429 error as a signal to switch endpoints
+        console.log('Current endpoint unhealthy, switching...', error?.message || error);
+        endpointManager.markEndpointAsFailed(endpoint);
+        const newEndpoint = endpointManager.switchToNextEndpoint();
+        setEndpoint(newEndpoint.url);
+      }
+    };
+
+    testEndpointHealth();
+  }, [endpoint, endpointManager]);
   
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-    ],
-    []
-  );
+  // Use Wallet Standard discovery; avoid registering specific wallet adapters like Phantom to prevent duplicates
+  const wallets = useMemo(() => [], []);
 
   return (
     <ConnectionProvider endpoint={endpoint}>

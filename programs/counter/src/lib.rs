@@ -24,7 +24,8 @@ pub struct Counter {
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {
-    #[account(init, payer = payer, space = 8 + 8)]
+    // Initialize a PDA so the client doesn't need an extra signer
+    #[account(init, seeds = [b"counter"], bump, payer = payer, space = 8 + 8)]
     pub counter: Account<'info, Counter>,
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -33,6 +34,7 @@ pub struct Initialize<'info> {
 
 #[derive(Accounts)]
 pub struct Increment<'info> {
-    #[account(mut)]
+    // Ensure we operate on the same PDA
+    #[account(mut, seeds = [b"counter"], bump)]
     pub counter: Account<'info, Counter>,
 }
