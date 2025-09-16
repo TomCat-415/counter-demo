@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/var/folders/sq/tw1vtyjx7pq15qx_qkh152fc0000gn/T/TemporaryItems/NSIRD_screencaptureui_NIFjM0/**)",
+      "Bash(npx create-next-app:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Read(/var/folders/sq/tw1vtyjx7pq15qx_qkh152fc0000gn/T/TemporaryItems/NSIRD_screencaptureui_81nmxm/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
