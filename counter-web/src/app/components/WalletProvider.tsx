@@ -23,9 +23,10 @@ export default function AppWalletProvider({
       try {
         const connection = new Connection(endpoint, 'confirmed');
         await connection.getVersion(); // Simple health check
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const err = error as { message?: string } | undefined;
         // Treat any network/CORS/429 error as a signal to switch endpoints
-        console.log('Current endpoint unhealthy, switching...', error?.message || error);
+        console.log('Current endpoint unhealthy, switching...', err?.message || error);
         endpointManager.markEndpointAsFailed(endpoint);
         const newEndpoint = endpointManager.switchToNextEndpoint();
         setEndpoint(newEndpoint.url);

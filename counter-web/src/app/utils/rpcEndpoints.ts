@@ -25,7 +25,7 @@ export const DEVNET_ENDPOINTS: RpcEndpoint[] = [
     : []),
   // Helius Devnet (requires API key; preferred default when available)
   ...(HELIUS_URL
-    ? [{ url: HELIUS_URL as const, name: 'Helius Devnet', priority: 1 }]
+    ? [{ url: HELIUS_URL, name: 'Helius Devnet', priority: 1 }]
     : []),
   // Solana public Devnet (may be rate-limited)
   {

@@ -1,5 +1,5 @@
 export class RequestQueue {
-  private queue: (() => Promise<any>)[] = [];
+  private queue: Array<() => Promise<unknown>> = [];
   private processing = false;
   private maxConcurrent = 3;
   private currentRequests = 0;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useConnection } from '@solana/wallet-adapter-react';
-import { Connection, PublicKey, Transaction, TransactionConfirmationStrategy, Commitment } from '@solana/web3.js';
+import { Connection, PublicKey, TransactionConfirmationStrategy, Commitment } from '@solana/web3.js';
 import { useCallback } from 'react';
 import { globalRequestQueue } from '../utils/requestQueue';
 
@@ -25,10 +25,11 @@ export function useRateLimitedConnection() {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return await operation();
-      } catch (error: any) {
-        const isRateLimit = error.message?.includes('429') ||
-                           error.message?.includes('Too many requests') ||
-                           error.code === 429;
+      } catch (error: unknown) {
+        const err = error as { message?: string; code?: number } | undefined;
+        const isRateLimit = err?.message?.includes('429') ||
+                           err?.message?.includes('Too many requests') ||
+                           err?.code === 429;
 
         if (!isRateLimit || attempt === maxRetries) {
           throw error;
@@ -54,7 +55,7 @@ export function useRateLimitedConnection() {
   const confirmTransaction = useCallback(
     (signature: string | TransactionConfirmationStrategy, commitment?: Commitment) =>
       globalRequestQueue.add(() =>
-        withRetry(() => connection.confirmTransaction(signature as any, commitment || 'confirmed'))
+        withRetry(() => connection.confirmTransaction(signature as TransactionConfirmationStrategy, commitment || 'confirmed'))
       ),
     [connection, withRetry]
   );
@@ -72,8 +73,8 @@ export function useRateLimitedConnection() {
       globalRequestQueue.add(async () => {
         try {
           return await withRetry(() => connection.requestAirdrop(publicKey, lamports));
-        } catch (primaryError: any) {
-          const msg = primaryError?.message || '';
+        } catch (primaryError: unknown) {
+          const msg = (primaryError as { message?: string } | undefined)?.message || '';
           const isProjectRateLimit = msg.includes('Rate limit exceeded') || msg.includes('403');
           if (!isProjectRateLimit) throw primaryError;
 
@@ -81,7 +82,7 @@ export function useRateLimitedConnection() {
           const fallback = new Connection('https://api.devnet.solana.com', 'confirmed');
           try {
             return await withRetry(() => fallback.requestAirdrop(publicKey, lamports));
-          } catch (fallbackError) {
+          } catch (_fallbackError) {
             throw primaryError; // preserve original error context
           }
         }

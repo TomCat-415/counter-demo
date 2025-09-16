@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useRateLimitedConnection } from '../hooks/useRateLimitedConnection';
-import { WalletMultiButton, WalletModalButton, WalletConnectButton, useWalletModal } from '@solana/wallet-adapter-react-ui';
-import { WalletReadyState } from '@solana/wallet-adapter-base';
+import { WalletConnectButton, useWalletModal } from '@solana/wallet-adapter-react-ui';
 import {
   PublicKey,
   SystemProgram,
   Transaction,
   TransactionInstruction,
   ComputeBudgetProgram,
+  TransactionMessage,
+  VersionedTransaction,
 } from '@solana/web3.js';
 
 const PROGRAM_ID = new PublicKey('2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1');
@@ -22,7 +23,7 @@ const ACC_DISC = Buffer.from([255, 176, 4, 245, 188, 253, 124, 25]);
 
 export default function Counter() {
   const { connection, getLatestBlockhash, confirmTransaction, getAccountInfo, requestAirdrop } = useRateLimitedConnection();
-  const { publicKey, sendTransaction: walletSendTransaction, signTransaction, connected, wallets } = useWallet();
+  const { publicKey, sendTransaction: walletSendTransaction, signTransaction, connected } = useWallet();
   const { setVisible } = useWalletModal();
   const [counter, setCounter] = useState<PublicKey | null>(null);
   const [counterValue, setCounterValue] = useState<number>(0);
@@ -35,13 +36,7 @@ export default function Counter() {
     setIsClient(true);
   }, []);
 
-  const hasReadyWallet = useMemo(() => {
-    // Show connect button only when a wallet is installed/loadable; otherwise open modal
-    return wallets.some(w => 
-      w.readyState === WalletReadyState.Installed ||
-      w.readyState === WalletReadyState.Loadable
-    );
-  }, [wallets]);
+  // No SSR wallet UI
 
   const readCounterValue = useCallback(async (counterPubkey: PublicKey) => {
     try {
@@ -130,16 +125,23 @@ export default function Counter() {
           signature = await walletSendTransaction(tx, connection, { preflightCommitment: 'confirmed' });
         }
         await confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
-      } catch (e: any) {
-        console.error('WalletSendTransactionError message:', e?.message);
-        console.error('cause:', e?.cause || e?.originalError);
-        if (e?.logs) console.error('logs:', e.logs);
+      } catch (e: unknown) {
+        const err = e as { message?: string; cause?: unknown; originalError?: unknown; logs?: unknown };
+        console.error('WalletSendTransactionError message:', err?.message);
+        console.error('cause:', (err?.cause as unknown) || (err?.originalError as unknown));
+        if (err?.logs) console.error('logs:', err.logs);
         try {
-          const sim = await connection.simulateTransaction(tx, { sigVerify: false, replaceRecentBlockhash: true });
+          const message = new TransactionMessage({
+            payerKey: publicKey!,
+            recentBlockhash: blockhash,
+            instructions: tx.instructions,
+          }).compileToLegacyMessage();
+          const vtx = new VersionedTransaction(message);
+          const sim = await connection.simulateTransaction(vtx, { sigVerify: false, replaceRecentBlockhash: true });
           console.error('Sim logs:', sim.value.logs);
           console.error('Sim err:', sim.value.err);
         } catch {}
-        throw e;
+        throw err;
       }
       
       setCounter(counterPda);
@@ -154,7 +156,7 @@ export default function Counter() {
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey, connected, connection, walletSendTransaction, getLatestBlockhash, confirmTransaction]);
+  }, [publicKey, connected, connection, walletSendTransaction, signTransaction, getLatestBlockhash, confirmTransaction, getAccountInfo, readCounterValue]);
 
   const incrementCounter = useCallback(async () => {
     if (!publicKey || !connected || !counter) return;
@@ -194,16 +196,23 @@ export default function Counter() {
           signature = await walletSendTransaction(tx, connection, { preflightCommitment: 'confirmed' });
         }
         await confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
-      } catch (e: any) {
-        console.error('WalletSendTransactionError message:', e?.message);
-        console.error('cause:', e?.cause || e?.originalError);
-        if (e?.logs) console.error('logs:', e.logs);
+      } catch (e: unknown) {
+        const err = e as { message?: string; cause?: unknown; originalError?: unknown; logs?: unknown };
+        console.error('WalletSendTransactionError message:', err?.message);
+        console.error('cause:', (err?.cause as unknown) || (err?.originalError as unknown));
+        if (err?.logs) console.error('logs:', err.logs);
         try {
-          const sim = await connection.simulateTransaction(tx, { sigVerify: false, replaceRecentBlockhash: true });
+          const message = new TransactionMessage({
+            payerKey: publicKey!,
+            recentBlockhash: blockhash,
+            instructions: tx.instructions,
+          }).compileToLegacyMessage();
+          const vtx = new VersionedTransaction(message);
+          const sim = await connection.simulateTransaction(vtx, { sigVerify: false, replaceRecentBlockhash: true });
           console.error('Sim logs:', sim.value.logs);
           console.error('Sim err:', sim.value.err);
         } catch {}
-        throw e;
+        throw err;
       }
       
       // Read the new value
@@ -221,7 +230,7 @@ export default function Counter() {
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey, connected, counter, connection, walletSendTransaction, getLatestBlockhash, confirmTransaction, readCounterValue]);
+  }, [publicKey, connected, counter, connection, walletSendTransaction, signTransaction, getLatestBlockhash, confirmTransaction, readCounterValue]);
 
   const airdropOneSol = useCallback(async () => {
     if (!publicKey || !connected) return;
