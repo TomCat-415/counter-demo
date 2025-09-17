@@ -54,9 +54,46 @@ export function useRateLimitedConnection() {
 
   const confirmTransaction = useCallback(
     (signature: string | TransactionConfirmationStrategy, commitment?: Commitment) =>
-      globalRequestQueue.add(() =>
-        withRetry(() => connection.confirmTransaction(signature as TransactionConfirmationStrategy, commitment || 'confirmed'))
-      ),
+      globalRequestQueue.add(async () => {
+        const desiredCommitment: Commitment = commitment || 'confirmed';
+        const sig = typeof signature === 'string' ? signature : signature.signature;
+        const lastValidBlockHeight =
+          typeof signature === 'string'
+            ? undefined
+            : ('lastValidBlockHeight' in signature
+                ? (signature as TransactionConfirmationStrategy & { lastValidBlockHeight?: number }).lastValidBlockHeight
+                : undefined);
+        const startTime = Date.now();
+        const timeoutMs = 180_000; // 3 minutes
+        const pollIntervalMs = 1_000;
+        let nextBlockHeightCheck = 0;
+
+        for (;;) {
+          // Optional: abort if past last valid block height
+          const now = Date.now();
+          if (lastValidBlockHeight !== undefined && now >= nextBlockHeightCheck) {
+            const current = await withRetry(() => connection.getBlockHeight(desiredCommitment));
+            if (current > lastValidBlockHeight) {
+              throw new Error('Signature has expired: block height exceeded.');
+            }
+            nextBlockHeightCheck = now + 3_000; // check every 3s
+          }
+
+          const statusResp = await withRetry(() => connection.getSignatureStatuses([sig], { searchTransactionHistory: true }));
+          const status = statusResp.value[0];
+          if (status) {
+            if (status.err) throw new Error(`Transaction failed: ${JSON.stringify(status.err)}`);
+            if (status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized') {
+              return { context: { slot: statusResp.context.slot }, value: status } as unknown as void;
+            }
+          }
+
+          if (Date.now() - startTime > timeoutMs) {
+            throw new Error('Confirmation timeout exceeded');
+          }
+          await delay(pollIntervalMs);
+        }
+      }),
     [connection, withRetry]
   );
 

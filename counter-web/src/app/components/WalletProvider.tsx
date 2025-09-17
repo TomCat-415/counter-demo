@@ -1,92 +1,59 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { Connection } from '@solana/web3.js';
-import { DEVNET_ENDPOINTS, RpcEndpointManager } from '../utils/rpcEndpoints';
+import { clusterApiUrl, Connection } from '@solana/web3.js';
+import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
-
-// Import wallet adapter CSS
 import '@solana/wallet-adapter-react-ui/styles.css';
 
-export default function AppWalletProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [endpointManager] = useState(() => new RpcEndpointManager(DEVNET_ENDPOINTS));
-  const [endpoint, setEndpoint] = useState(() => endpointManager.getCurrentEndpoint().url);
+// Simple connection factory with longer timeouts
+function createConnectionWithTimeouts(endpoint: string): Connection {
+	return new Connection(endpoint, {
+		commitment: 'confirmed',
+		confirmTransactionInitialTimeout: 180_000,
+	});
+}
 
-  // Normalize relative endpoints like "/api/solana" to absolute for web3.js
-  // On the server (SSR), provide a safe absolute fallback to avoid errors
-  const normalizedEndpoint = React.useMemo(() => {
-    if (endpoint.startsWith('/')) {
-      if (typeof window !== 'undefined') {
-        return `${window.location.origin}${endpoint}`;
-      }
-      // SSR fallback (only during initial render), replaced on client after mount
-      return 'https://api.devnet.solana.com';
-    }
-    return endpoint;
-  }, [endpoint]);
+export default function AppWalletProvider({ children }: { children: React.ReactNode }) {
+	const fallbackEndpoint = clusterApiUrl(WalletAdapterNetwork.Devnet);
+	const configured = (process.env.NEXT_PUBLIC_SOLANA_RPC_URL as string) || fallbackEndpoint;
 
-  // Provide a WebSocket endpoint. Our HTTP may be a relative proxy that doesn't support WS,
-  // so default WS to public devnet to avoid console spam and connection failures.
-  const wsEndpoint = React.useMemo(() => {
-    try {
-      const url = new URL(normalizedEndpoint);
-      const isSameOrigin = typeof window !== 'undefined' && url.origin === window.location.origin;
-      if (isSameOrigin) {
-        return 'wss://api.devnet.solana.com';
-      }
-      const wsProto = url.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${wsProto}//${url.host}${url.pathname}`;
-    } catch {
-      return 'wss://api.devnet.solana.com';
-    }
-  }, [normalizedEndpoint]);
+	// Normalize endpoint for SSR safety
+	const normalizedEndpoint = useMemo(() => {
+		if (configured.startsWith('/')) {
+			if (typeof window !== 'undefined') return `${window.location.origin}${configured}`;
+			return 'https://api.devnet.solana.com';
+		}
+    return configured;
+	}, [configured]);
 
-  // Test endpoint health and switch if needed
-  useEffect(() => {
-    const testEndpointHealth = async () => {
-      try {
-        // Use normalized endpoint for web3.js health check
-        const connection = new Connection(normalizedEndpoint, 'confirmed');
-        await connection.getVersion(); // Simple health check
-      } catch (error: unknown) {
-        const err = error as { message?: string } | undefined;
-        // Treat any network/CORS/429 error as a signal to switch endpoints
-        console.log('Current endpoint unhealthy, switching...', err?.message || error);
-        endpointManager.markEndpointAsFailed(endpoint);
-        const newEndpoint = endpointManager.switchToNextEndpoint();
-        setEndpoint(newEndpoint.url);
-      }
-    };
+	// Create a dedicated Connection instance (used for health check)
+	const connection = useMemo(() => createConnectionWithTimeouts(normalizedEndpoint), [normalizedEndpoint]);
 
-    testEndpointHealth();
-  }, [endpoint, normalizedEndpoint, endpointManager]);
-  
-  // Prefer Wallet Standard discovery; add legacy fallbacks only if no Standard wallets are detected
-  type StandardNavigator = Navigator & { wallets?: unknown };
-  const wallets = useMemo<import('@solana/wallet-adapter-base').WalletAdapter[]>(() => {
-    if (typeof window === 'undefined') return [];
-    const hasWalletStandard = Boolean((navigator as StandardNavigator).wallets);
-    if (hasWalletStandard) return [];
-    try {
-      return [new PhantomWalletAdapter(), new SolflareWalletAdapter()];
-    } catch {
-      return [];
-    }
+  // Explicit WebSocket endpoint (no key). Stops ws://localhost derivation and errors
+  const wsEndpoint = useMemo(() => {
+    const envWs = process.env.NEXT_PUBLIC_SOLANA_WS_URL as string | undefined;
+    return envWs || 'wss://api.devnet.solana.com';
   }, []);
 
+	// Lightweight health check (non-blocking)
+	useEffect(() => {
+		connection.getVersion().catch((e: unknown) => {
+			const msg = (e as { message?: string } | undefined)?.message || e;
+			console.warn('RPC health check failed for:', normalizedEndpoint, msg);
+		});
+	}, [connection, normalizedEndpoint]);
+
+	// Always include Phantom/Solflare adapters (defighter-style)
+	const wallets = useMemo(() => [new PhantomWalletAdapter(), new SolflareWalletAdapter()], []);
+
   return (
-    <ConnectionProvider endpoint={normalizedEndpoint} config={{ commitment: 'confirmed', wsEndpoint }}>
-      <WalletProvider wallets={wallets} autoConnect={false}>
-        <WalletModalProvider>
-          {children}
-        </WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
-  );
+    <ConnectionProvider endpoint={normalizedEndpoint} config={{ commitment: 'confirmed', wsEndpoint, confirmTransactionInitialTimeout: 180000 }}>
+			<WalletProvider wallets={wallets} autoConnect={false}>
+				<WalletModalProvider>{children}</WalletModalProvider>
+			</WalletProvider>
+		</ConnectionProvider>
+	);
 }

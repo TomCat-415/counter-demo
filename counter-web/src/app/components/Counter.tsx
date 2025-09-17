@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useRateLimitedConnection } from '../hooks/useRateLimitedConnection';
-import { WalletConnectButton, useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { WalletMultiButton, useWalletModal } from '@solana/wallet-adapter-react-ui';
 import {
   PublicKey,
   SystemProgram,
@@ -283,7 +283,7 @@ export default function Counter() {
           <div className="wallet-adapter-button-trigger flex justify-center" suppressHydrationWarning>
             {isClient ? (
               !connected ? (
-                <WalletConnectButton className="!bg-teal-500 hover:!bg-teal-600 !rounded-none !border-none !font-bold !uppercase !tracking-wider !h-12 !px-8" />
+                <WalletMultiButton className="!bg-teal-500 hover:!bg-teal-600 !rounded-none !border-none !font-bold !uppercase !tracking-wider !h-12 !px-8" />
               ) : null
             ) : (
               <button className="bg-teal-500 text-white font-bold py-3 px-8 uppercase tracking-wider opacity-60" disabled>
