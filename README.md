@@ -132,6 +132,40 @@ cd counter-web && npm run build
 
 ---
 
+## Technical Notes (for reviewers)
+
+### Why PDA?
+- Deterministic address (`[b"counter"]`) so the client can derive the account without extra signers.
+- Better UX (no local keypair management) and fewer signature prompts.
+- Safer pattern that avoids accidental account mix-ups.
+
+### RPC Proxy Design
+- Browser sends JSON‑RPC to `GET/POST /api/solana` (same origin).
+- Server route `counter-web/src/app/api/solana/route.ts` forwards to `${RPC_UPSTREAM}/?api-key=${HELIUS_API_KEY}`.
+- `HELIUS_API_KEY` and `RPC_UPSTREAM` are server‑only envs; the key is never exposed client‑side.
+- WebSocket traffic is explicitly pointed to a public Devnet WS endpoint to avoid ws://localhost errors.
+
+### Reliability Choices
+- Fetch fresh finalized blockhash immediately before sending.
+- Confirm using the object form `{ signature, blockhash, lastValidBlockHeight }`.
+- ComputeBudget: generous unit limit + tiny priority fee for stability on Devnet.
+- Endpoint health checks + request queue with backoff for 429s; graceful faucet fallback.
+- Wallet‑first send; on failure, simulate and print program logs for actionable debugging.
+
+### Troubleshooting
+- 429 / rate limits: proxy stays stable; retries with backoff; optionally switch upstream.
+- "Unexpected error" from wallet: read the simulated logs printed by the client; they point to the exact account/IX mismatch.
+- CORS: avoided entirely via the same‑origin proxy.
+
+### Deployment Reminders
+- Program ID (Devnet): `2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1`.
+- Anchor deploy requires a funded provider wallet; keep client `PROGRAM_ID` in sync with the deployed address.
+- Vercel envs:
+  - `NEXT_PUBLIC_SOLANA_RPC_URL=/api/solana` (client)
+  - `HELIUS_API_KEY=...` and `RPC_UPSTREAM=https://devnet.helius-rpc.com` (server‑only)
+
+---
+
 ## Notes
 - Devnet-only demo. Wallet prompts on devnet for unknown sites are expected.
 - If you later want to keep RPC keys private, proxy JSON-RPC through a server route and use server-only env vars.
