@@ -82,7 +82,7 @@ export function useRateLimitedConnection() {
           const fallback = new Connection('https://api.devnet.solana.com', 'confirmed');
           try {
             return await withRetry(() => fallback.requestAirdrop(publicKey, lamports));
-          } catch (_fallbackError) {
+          } catch {
             throw primaryError; // preserve original error context
           }
         }

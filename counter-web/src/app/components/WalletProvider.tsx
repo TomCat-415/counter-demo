@@ -68,14 +68,15 @@ export default function AppWalletProvider({
   }, [endpoint, normalizedEndpoint, endpointManager]);
   
   // Prefer Wallet Standard discovery; add legacy fallbacks only if no Standard wallets are detected
-  const wallets = useMemo(() => {
-    if (typeof window === 'undefined') return [] as any[];
-    const hasWalletStandard = !!(navigator as any)?.wallets;
-    if (hasWalletStandard) return [] as any[];
+  type StandardNavigator = Navigator & { wallets?: unknown };
+  const wallets = useMemo<import('@solana/wallet-adapter-base').WalletAdapter[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const hasWalletStandard = Boolean((navigator as StandardNavigator).wallets);
+    if (hasWalletStandard) return [];
     try {
       return [new PhantomWalletAdapter(), new SolflareWalletAdapter()];
     } catch {
-      return [] as any[];
+      return [];
     }
   }, []);
 
