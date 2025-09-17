@@ -17,11 +17,41 @@ export default function AppWalletProvider({
   const [endpointManager] = useState(() => new RpcEndpointManager(DEVNET_ENDPOINTS));
   const [endpoint, setEndpoint] = useState(() => endpointManager.getCurrentEndpoint().url);
 
+  // Normalize relative endpoints like "/api/solana" to absolute for web3.js
+  // On the server (SSR), provide a safe absolute fallback to avoid errors
+  const normalizedEndpoint = React.useMemo(() => {
+    if (endpoint.startsWith('/')) {
+      if (typeof window !== 'undefined') {
+        return `${window.location.origin}${endpoint}`;
+      }
+      // SSR fallback (only during initial render), replaced on client after mount
+      return 'https://api.devnet.solana.com';
+    }
+    return endpoint;
+  }, [endpoint]);
+
+  // Provide a WebSocket endpoint. Our HTTP may be a relative proxy that doesn't support WS,
+  // so default WS to public devnet to avoid console spam and connection failures.
+  const wsEndpoint = React.useMemo(() => {
+    try {
+      const url = new URL(normalizedEndpoint);
+      const isSameOrigin = typeof window !== 'undefined' && url.origin === window.location.origin;
+      if (isSameOrigin) {
+        return 'wss://api.devnet.solana.com';
+      }
+      const wsProto = url.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${wsProto}//${url.host}${url.pathname}`;
+    } catch {
+      return 'wss://api.devnet.solana.com';
+    }
+  }, [normalizedEndpoint]);
+
   // Test endpoint health and switch if needed
   useEffect(() => {
     const testEndpointHealth = async () => {
       try {
-        const connection = new Connection(endpoint, 'confirmed');
+        // Use normalized endpoint for web3.js health check
+        const connection = new Connection(normalizedEndpoint, 'confirmed');
         await connection.getVersion(); // Simple health check
       } catch (error: unknown) {
         const err = error as { message?: string } | undefined;
@@ -34,13 +64,13 @@ export default function AppWalletProvider({
     };
 
     testEndpointHealth();
-  }, [endpoint, endpointManager]);
+  }, [endpoint, normalizedEndpoint, endpointManager]);
   
   // Use Wallet Standard discovery; avoid registering specific wallet adapters like Phantom to prevent duplicates
   const wallets = useMemo(() => [], []);
 
   return (
-    <ConnectionProvider endpoint={endpoint}>
+    <ConnectionProvider endpoint={normalizedEndpoint} config={{ commitment: 'confirmed', wsEndpoint }}>
       <WalletProvider wallets={wallets} autoConnect={false}>
         <WalletModalProvider>
           {children}
