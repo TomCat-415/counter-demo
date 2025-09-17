@@ -308,6 +308,18 @@ export default function Counter() {
             </button>
           )}
 
+          {!connected && (
+            <details className="bg-gray-800/60 border border-gray-700 p-4 text-sm text-gray-300">
+              <summary className="cursor-pointer text-gray-400">Troubleshoot Connect</summary>
+              <ul className="list-disc pl-5 pt-2 space-y-1">
+                <li>Update Phantom/Solflare and ensure the extension is enabled for this site.</li>
+                <li>Disable ad-blockers/Brave Shields or try a private window with extensions off.</li>
+                <li>Try Chrome/Edge; some Safari setups block extensions by default.</li>
+                <li>Desktop is recommended; mobile in-app browsers may not inject extensions.</li>
+              </ul>
+            </details>
+          )}
+
           {connected && !counter && (
             <button
               onClick={initializeCounter}

@@ -5,6 +5,7 @@ import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { Connection } from '@solana/web3.js';
 import { DEVNET_ENDPOINTS, RpcEndpointManager } from '../utils/rpcEndpoints';
+import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 
 // Import wallet adapter CSS
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -66,8 +67,17 @@ export default function AppWalletProvider({
     testEndpointHealth();
   }, [endpoint, normalizedEndpoint, endpointManager]);
   
-  // Use Wallet Standard discovery; avoid registering specific wallet adapters like Phantom to prevent duplicates
-  const wallets = useMemo(() => [], []);
+  // Prefer Wallet Standard discovery; add legacy fallbacks only if no Standard wallets are detected
+  const wallets = useMemo(() => {
+    if (typeof window === 'undefined') return [] as any[];
+    const hasWalletStandard = !!(navigator as any)?.wallets;
+    if (hasWalletStandard) return [] as any[];
+    try {
+      return [new PhantomWalletAdapter(), new SolflareWalletAdapter()];
+    } catch {
+      return [] as any[];
+    }
+  }, []);
 
   return (
     <ConnectionProvider endpoint={normalizedEndpoint} config={{ commitment: 'confirmed', wsEndpoint }}>
