@@ -12,7 +12,7 @@ counter = "2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "https://devnet.helius-rpc.com/?api-key=38251202-3a7b-4473-be45-ea529f02b66a"
+cluster = "devnet"
 wallet  = "/Users/thc/code/solana/devnet.json"
 
 [scripts]
