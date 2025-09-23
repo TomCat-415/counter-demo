@@ -27,7 +27,7 @@ A lean, well-instrumented example of:
 - Deterministic account layout (Anchor discriminator + `u64`)
 - Robust transaction flow (finalized blockhash, compute budget, structured confirmation)
 - Wallet Standard integration (no hard-coded Phantom adapter)
-- Resilient RPC usage with endpoint health checks and failover
+- Resilient RPC usage with endpoint health checks and failover.
 
 **Program ID (Devnet)**: `2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1`  
 [View on Explorer](https://explorer.solana.com/address/2esiwqpYjizvnSQBFcvo5cSNbgzpPVfTW2ew24YUiHj1?cluster=devnet)
