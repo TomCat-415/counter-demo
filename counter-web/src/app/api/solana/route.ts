@@ -7,7 +7,7 @@ const target = heliusKey ? `${upstream}/?api-key=${heliusKey}` : upstream;
 
 export async function POST(request: Request) {
   const maxRetries = 2;
-  let lastError: any;
+  let lastError: unknown;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
